@@ -1,21 +1,28 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Layout, Dropdown, Avatar, Space, Tabs } from 'antd';
+import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
+import type { MenuProps } from 'antd';
 import { createClient } from "@/utils/supabase/client";
 import { useRouter, usePathname } from "next/navigation";
-import Tabs from "./Tabs";
+
+const { Header } = Layout;
 
 interface Tab {
-  path: string;
+  key: string;
   label: string;
+  closable: boolean;
 }
 
-const menuLabels: Record<string, string> = {
-  "/": "首页",
+const routeLabels: Record<string, string> = {
+  "/home": "首页",
   "/projects": "项目管理",
   "/tasks": "任务管理",
   "/documents": "文档管理",
   "/reports": "报告",
+  "/analytics": "数据分析",
+  "/settings": "设置",
 };
 
 export default function TopBar() {
@@ -23,7 +30,8 @@ export default function TopBar() {
   const pathname = usePathname();
   const supabase = createClient();
   const [user, setUser] = useState<{ email?: string; user_metadata?: { username?: string } } | null>(null);
-  const [tabs, setTabs] = useState<Tab[]>([]);
+  const [tabs, setTabs] = useState<Tab[]>([{ key: "/home", label: "首页", closable: false }]);
+  const [activeKey, setActiveKey] = useState("/home");
 
   useEffect(() => {
     const getUser = async () => {
@@ -34,84 +42,129 @@ export default function TopBar() {
   }, [supabase]);
 
   useEffect(() => {
-    // 初始化标签页
-    const initialTabs = localStorage.getItem("tabs");
-    let currentTabs: Tab[] = [];
-    
-    if (initialTabs) {
-      currentTabs = JSON.parse(initialTabs);
-    } else {
-      // 默认添加首页标签
-      currentTabs = [{ path: "/", label: "首页" }];
-      localStorage.setItem("tabs", JSON.stringify(currentTabs));
+    // 从 localStorage 恢复标签页
+    const savedTabs = localStorage.getItem("tabs");
+    if (savedTabs) {
+      try {
+        const parsedTabs = JSON.parse(savedTabs);
+        setTabs(parsedTabs);
+      } catch (e) {
+        console.error("Failed to parse saved tabs", e);
+      }
     }
-    
-    setTabs(currentTabs);
-    
-    // 当前路径不在标签页中时，添加新标签
-    if (pathname && !currentTabs.find((tab) => tab.path === pathname)) {
-      const label = menuLabels[pathname] || pathname;
-      const newTabs = [...currentTabs, { path: pathname, label }];
+  }, []);
+
+  useEffect(() => {
+    if (!pathname) return;
+
+    // 更新当前激活的标签
+    setActiveKey(pathname);
+
+    // 使用函数式更新来获取最新的 tabs 状态
+    setTabs(currentTabs => {
+      // 检查当前路径是否已经在标签页中
+      const existingTab = currentTabs.find(tab => tab.key === pathname);
+      
+      if (!existingTab) {
+        // 获取路由标签名称
+        let label = routeLabels[pathname];
+        
+        // 如果是动态路由，尝试提取 ID
+        if (!label) {
+          if (pathname.startsWith("/projects/")) {
+            label = "项目详情";
+          } else {
+            label = pathname;
+          }
+        }
+
+        // 添加新标签
+        const newTabs = [...currentTabs, { key: pathname, label, closable: true }];
+        localStorage.setItem("tabs", JSON.stringify(newTabs));
+        return newTabs;
+      }
+      
+      return currentTabs;
+    });
+  }, [pathname]);
+
+  const handleTabChange = (key: string) => {
+    setActiveKey(key);
+    router.push(key);
+  };
+
+  const handleTabEdit = (targetKey: any, action: 'add' | 'remove') => {
+    if (action === 'remove') {
+      const targetIndex = tabs.findIndex(tab => tab.key === targetKey);
+      const newTabs = tabs.filter(tab => tab.key !== targetKey);
+      
+      if (newTabs.length === 0) {
+        // 如果所有标签都被关闭，保留首页
+        newTabs.push({ key: "/home", label: "首页", closable: false });
+      }
+
+      // 如果关闭的是当前激活的标签，切换到相邻标签
+      if (targetKey === activeKey) {
+        const newActiveKey = targetIndex > 0 
+          ? newTabs[targetIndex - 1].key 
+          : newTabs[0].key;
+        setActiveKey(newActiveKey);
+        router.push(newActiveKey);
+      }
+
       setTabs(newTabs);
       localStorage.setItem("tabs", JSON.stringify(newTabs));
     }
-  }, [pathname]);
-
-  const handleCloseTab = (path: string) => {
-    setTabs((prevTabs) => {
-      const newTabs = prevTabs.filter((tab) => tab.path !== path);
-      localStorage.setItem("tabs", JSON.stringify(newTabs));
-
-      // 如果关闭的是当前标签，跳转到其他标签或首页
-      if (path === pathname) {
-        if (newTabs.length > 0) {
-          router.push(newTabs[newTabs.length - 1].path);
-        } else {
-          router.push("/");
-        }
-      }
-
-      return newTabs;
-    });
   };
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem("tabs");
     router.push("/login");
     router.refresh();
   };
 
-  // 获取显示的用户名（优先使用 metadata 中的 username，否则使用 email 的用户名部分）
-  const displayName = user?.user_metadata?.username || 
-    (user?.email ? user.email.split("@")[0] : "加载中...");
+  const displayName = user?.email || "用户";
+
+  const items: MenuProps['items'] = [
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: '退出登录',
+      onClick: handleSignOut,
+    },
+  ];
 
   return (
-    <div className="h-14 bg-blue-400 border-b border-blue-500 flex items-center justify-between px-6 shadow-sm">
-      {/* 左侧标签页 */}
-      <div className="flex-1">
-        <Tabs tabs={tabs} onClose={handleCloseTab} />
+    <Header style={{ 
+      padding: '0 24px', 
+      background: '#fff', 
+      borderBottom: '1px solid #f0f0f0',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    }}>
+      <div style={{ flex: 1, marginRight: 24 }}>
+        <Tabs
+          type="editable-card"
+          activeKey={activeKey}
+          onChange={handleTabChange}
+          onEdit={handleTabEdit}
+          hideAdd
+          items={tabs.map(tab => ({
+            key: tab.key,
+            label: tab.label,
+            closable: tab.closable,
+          }))}
+          style={{ marginBottom: 0 }}
+        />
       </div>
-
-      {/* 右侧用户信息和退出 */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500 rounded-lg">
-          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          </div>
-          <span className="text-sm font-medium text-white">{displayName}</span>
-        </div>
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-2 px-3 py-1.5 text-white hover:bg-blue-500 rounded-lg transition-colors text-sm font-medium"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          退出登录
-        </button>
-      </div>
-    </div>
+      <Dropdown menu={{ items }} placement="bottomRight">
+        <Space style={{ cursor: 'pointer' }}>
+          <Avatar icon={<UserOutlined />} />
+          <span>{displayName}</span>
+        </Space>
+      </Dropdown>
+    </Header>
   );
 }

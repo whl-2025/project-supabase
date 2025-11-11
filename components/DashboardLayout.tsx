@@ -1,5 +1,10 @@
+"use client";
+
+import { Layout } from 'antd';
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
+
+const { Content } = Layout;
 
 export default function DashboardLayout({
   children,
@@ -7,22 +12,14 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-      {/* 左侧菜单 */}
+    <Layout style={{ minHeight: '100vh' }}>
       <Sidebar />
-      
-      {/* 右侧内容区域 */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* 顶部导航栏 */}
+      <Layout>
         <TopBar />
-        
-        {/* 主内容区域 */}
-        <main className="flex-1 overflow-y-auto bg-gray-100 p-4">
-          <div className="bg-white rounded-lg shadow-sm p-6 min-h-full">
-            {children}
-          </div>
-        </main>
-      </div>
-    </div>
+        <Content style={{ margin: '24px 16px', padding: 24, background: '#fff', minHeight: 280 }}>
+          {children}
+        </Content>
+      </Layout>
+    </Layout>
   );
 }

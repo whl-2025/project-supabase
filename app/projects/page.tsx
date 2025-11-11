@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Table, Button, Input, Space, Tag, Modal, message, Popconfirm } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
+import type { ColumnsType } from 'antd/es/table';
 import { createClient } from "@/utils/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import ProjectModal from "@/components/ProjectModal";
@@ -17,7 +20,6 @@ interface Project {
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,7 +40,7 @@ export default function ProjectsPage() {
       if (error) throw error;
       setProjects(data || []);
     } catch (err: any) {
-      setError(err.message);
+      message.error("加载失败: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -55,14 +57,13 @@ export default function ProjectsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("确定要删除这个项目吗？")) return;
-
     try {
       const { error } = await supabase.from("projects").delete().eq("id", id);
       if (error) throw error;
+      message.success("删除成功");
       fetchProjects();
     } catch (err: any) {
-      alert("删除失败: " + err.message);
+      message.error("删除失败: " + err.message);
     }
   };
 
@@ -77,140 +78,114 @@ export default function ProjectsPage() {
     (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const statusMap: Record<string, { text: string; color: string }> = {
+    active: { text: '进行中', color: 'green' },
+    completed: { text: '已完成', color: 'blue' },
+    paused: { text: '已暂停', color: 'default' },
+  };
+
+  const columns: ColumnsType<Project> = [
+    {
+      title: '项目名称',
+      dataIndex: 'name',
+      key: 'name',
+      width: 200,
+    },
+    {
+      title: '描述',
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: true,
+      render: (text) => text || '-',
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: (status: string) => (
+        <Tag color={statusMap[status]?.color || 'default'}>
+          {statusMap[status]?.text || status}
+        </Tag>
+      ),
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 150,
+      render: (date: string) => new Date(date).toLocaleDateString("zh-CN"),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 180,
+      fixed: 'right',
+      render: (_, record) => (
+        <Space size="small">
+          <Button 
+            type="link" 
+            size="small"
+            icon={<EditOutlined />} 
+            onClick={() => handleEdit(record)}
+          >
+            编辑
+          </Button>
+          <Popconfirm
+            title="确定要删除这个项目吗？"
+            onConfirm={() => handleDelete(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
   return (
     <DashboardLayout>
-      <div className="space-y-4">
-        {/* 页面标题和操作 */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">项目管理</h1>
-          <button
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 'bold', margin: 0 }}>项目管理</h1>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
             onClick={handleCreate}
-            className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors font-medium"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            添加
-          </button>
+            添加项目
+          </Button>
         </div>
 
-        {/* 搜索框 */}
-        <div className="flex gap-4 items-center">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="搜索项目名称或描述..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-            />
-          </div>
-          <button
-            onClick={() => fetchProjects()}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-          >
-            查询
-          </button>
-        </div>
+        <Space style={{ width: '100%' }}>
+          <Input
+            placeholder="搜索项目名称或描述..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            prefix={<SearchOutlined />}
+            style={{ width: 300 }}
+            allowClear
+          />
+          <Button onClick={() => fetchProjects()}>查询</Button>
+        </Space>
 
-        {/* 表格 */}
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          </div>
-        ) : error ? (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            错误: {error}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse bg-white">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">项目名称</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">描述</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">状态</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">创建时间</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProjects.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                      暂无数据
-                    </td>
-                  </tr>
-                ) : (
-                  filteredProjects.map((project) => (
-                    <tr key={project.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{project.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600 max-w-md truncate">
-                        {project.description || "-"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            project.status === "active"
-                              ? "bg-green-100 text-green-700"
-                              : project.status === "completed"
-                              ? "bg-blue-100 text-blue-600"
-                              : "bg-gray-100 text-gray-700"
-                          }`}
-                        >
-                          {project.status === "active"
-                            ? "进行中"
-                            : project.status === "completed"
-                            ? "已完成"
-                            : "已暂停"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {new Date(project.created_at).toLocaleDateString("zh-CN")}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => handleEdit(project)}
-                            className="text-blue-500 hover:text-blue-600 text-sm font-medium"
-                          >
-                            编辑
-                          </button>
-                          <span className="text-gray-300">|</span>
-                          <button
-                            onClick={() => handleDelete(project.id)}
-                            className="text-red-600 hover:text-red-800 text-sm font-medium"
-                          >
-                            删除
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <Table
+          columns={columns}
+          dataSource={filteredProjects}
+          rowKey="id"
+          loading={loading}
+          scroll={{ x: 'max-content' }}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 条`,
+          }}
+        />
+      </Space>
 
-        {/* 分页 */}
-        {filteredProjects.length > 0 && (
-          <div className="flex justify-end items-center gap-2 pt-4">
-            <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 transition-colors">
-              &lt;
-            </button>
-            <button className="px-3 py-1 bg-blue-500 text-white rounded">1</button>
-            <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 transition-colors">
-              2
-            </button>
-            <button className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-50 transition-colors">
-              &gt;
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* 新建/编辑项目弹窗 */}
       <ProjectModal
         isOpen={isModalOpen}
         onClose={handleModalClose}
