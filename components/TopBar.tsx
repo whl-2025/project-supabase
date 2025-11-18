@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Layout, Dropdown, Avatar, Space, Tabs } from 'antd';
-import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
+import { Layout, Dropdown, Avatar, Space, Tabs, Badge, Button } from 'antd';
+import { 
+  UserOutlined, 
+  LogoutOutlined, 
+  BellOutlined,
+  SettingOutlined,
+} from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { createClient } from "@/utils/supabase/client";
 import { useRouter, usePathname } from "next/navigation";
@@ -16,13 +21,16 @@ interface Tab {
 }
 
 const routeLabels: Record<string, string> = {
-  "/home": "首页",
+  "/home": "仪表板",
   "/projects": "项目管理",
-  "/tasks": "任务管理",
-  "/documents": "文档管理",
-  "/reports": "报告",
-  "/analytics": "数据分析",
-  "/settings": "设置",
+  "/ai/items": "知识库管理",
+  "/ai/search": "智能问答",
+  "/ai/settings": "模型配置",
+  "/files": "文件管理",
+  "/teams": "团队管理",
+  "/activity": "活动日志",
+  "/settings": "系统设置",
+  "/notifications": "通知中心",
 };
 
 export default function TopBar() {
@@ -30,13 +38,24 @@ export default function TopBar() {
   const pathname = usePathname();
   const supabase = createClient();
   const [user, setUser] = useState<{ email?: string; user_metadata?: { username?: string } } | null>(null);
-  const [tabs, setTabs] = useState<Tab[]>([{ key: "/home", label: "首页", closable: false }]);
+  const [tabs, setTabs] = useState<Tab[]>([{ key: "/home", label: "仪表板", closable: false }]);
   const [activeKey, setActiveKey] = useState("/home");
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      
+      // 获取未读通知数量
+      if (user) {
+        const { count } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_read', false);
+        setUnreadCount(count || 0);
+      }
     };
     getUser();
   }, [supabase]);
@@ -126,7 +145,16 @@ export default function TopBar() {
 
   const displayName = user?.email || "用户";
 
-  const items: MenuProps['items'] = [
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: '系统设置',
+      onClick: () => router.push('/settings'),
+    },
+    {
+      type: 'divider',
+    },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
@@ -159,12 +187,21 @@ export default function TopBar() {
           style={{ marginBottom: 0 }}
         />
       </div>
-      <Dropdown menu={{ items }} placement="bottomRight">
-        <Space style={{ cursor: 'pointer' }}>
-          <Avatar icon={<UserOutlined />} />
-          <span>{displayName}</span>
-        </Space>
-      </Dropdown>
+      <Space size="large">
+        <Badge count={unreadCount} offset={[-5, 5]}>
+          <Button 
+            type="text" 
+            icon={<BellOutlined style={{ fontSize: 18 }} />}
+            onClick={() => router.push('/notifications')}
+          />
+        </Badge>
+        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+          <Space style={{ cursor: 'pointer' }}>
+            <Avatar icon={<UserOutlined />} />
+            <span>{displayName}</span>
+          </Space>
+        </Dropdown>
+      </Space>
     </Header>
   );
 }

@@ -6,19 +6,26 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   HomeOutlined,
   ProjectOutlined,
-  CheckSquareOutlined,
-  FileTextOutlined,
-  BarChartOutlined,
+  RobotOutlined,
+  DatabaseOutlined,
+  SettingOutlined,
+  SearchOutlined,
+  FileOutlined,
+  TeamOutlined,
+  HistoryOutlined,
 } from '@ant-design/icons';
+import type { MenuProps } from 'antd';
 
 const { Sider } = Layout;
+
+type MenuItem = Required<MenuProps>['items'][number];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     {
       key: '/home',
       icon: <HomeOutlined />,
@@ -30,20 +37,42 @@ export default function Sidebar() {
       label: '项目管理',
     },
     {
-      key: '/tasks',
-      icon: <CheckSquareOutlined />,
-      label: '任务管理',
+      key: 'ai',
+      icon: <RobotOutlined />,
+      label: 'AI 助手',
+      children: [
+        {
+          key: '/ai/items',
+          icon: <DatabaseOutlined />,
+          label: '知识库管理',
+        },
+        {
+          key: '/ai/search',
+          icon: <SearchOutlined />,
+          label: '智能问答',
+        },
+        {
+          key: '/ai/settings',
+          icon: <SettingOutlined />,
+          label: '模型配置',
+        },
+      ],
     },
-    {
-      key: '/documents',
-      icon: <FileTextOutlined />,
-      label: '文档管理',
-    },
-    {
-      key: '/reports',
-      icon: <BarChartOutlined />,
-      label: '报告',
-    },
+    // {
+    //   key: '/files',
+    //   icon: <FileOutlined />,
+    //   label: '文件管理',
+    // },
+    // {
+    //   key: '/teams',
+    //   icon: <TeamOutlined />,
+    //   label: '团队管理',
+    // },
+    // {
+    //   key: '/activity',
+    //   icon: <HistoryOutlined />,
+    //   label: '活动日志',
+    // },
   ];
 
   const handleMenuClick = ({ key }: { key: string }) => {
@@ -54,16 +83,31 @@ export default function Sidebar() {
     // 如果是根路径，选中首页
     if (pathname === '/') return ['/home'];
     
+    // AI 子菜单匹配
+    if (pathname.startsWith('/ai/')) {
+      return [pathname];
+    }
+    
     // 精确匹配
-    const exactMatch = menuItems.find(item => item.key === pathname);
-    if (exactMatch) return [exactMatch.key];
+    if (pathname === '/home' || pathname === '/projects' || pathname === '/files' || 
+        pathname === '/teams' || pathname === '/activity') {
+      return [pathname];
+    }
     
-    // 前缀匹配（用于子路由，如 /projects/123）
-    const prefixMatch = menuItems.find(item => 
-      item.key !== '/home' && pathname.startsWith(item.key + '/')
-    );
+    // 前缀匹配（用于子路由）
+    if (pathname.startsWith('/projects/')) return ['/projects'];
+    if (pathname.startsWith('/files/')) return ['/files'];
+    if (pathname.startsWith('/teams/')) return ['/teams'];
+    if (pathname.startsWith('/activity/')) return ['/activity'];
     
-    return prefixMatch ? [prefixMatch.key] : ['/home'];
+    return ['/home'];
+  };
+
+  const getOpenKeys = () => {
+    if (pathname.startsWith('/ai/')) {
+      return ['ai'];
+    }
+    return [];
   };
 
   return (
@@ -98,6 +142,7 @@ export default function Sidebar() {
         theme="dark"
         mode="inline"
         selectedKeys={getSelectedKey()}
+        defaultOpenKeys={getOpenKeys()}
         items={menuItems}
         onClick={handleMenuClick}
       />

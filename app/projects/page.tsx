@@ -32,9 +32,13 @@ export default function ProjectsPage() {
   const fetchProjects = async () => {
     try {
       setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data, error } = await supabase
         .from("projects")
         .select("*")
+        .eq("owner_id", user.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
