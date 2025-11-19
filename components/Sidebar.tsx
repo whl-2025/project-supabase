@@ -13,6 +13,7 @@ import {
   FileOutlined,
   TeamOutlined,
   HistoryOutlined,
+  ExperimentOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 
@@ -56,13 +57,18 @@ export default function Sidebar() {
           icon: <SettingOutlined />,
           label: '模型配置',
         },
+        // {
+        //   key: '/ai/diagnose',
+        //   icon: <ExperimentOutlined />,
+        //   label: '模型诊断',
+        // },
       ],
     },
-    // {
-    //   key: '/files',
-    //   icon: <FileOutlined />,
-    //   label: '文件管理',
-    // },
+    {
+      key: '/files',
+      icon: <FileOutlined />,
+      label: '文件管理',
+    },
     // {
     //   key: '/teams',
     //   icon: <TeamOutlined />,

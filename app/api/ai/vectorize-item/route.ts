@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       .select('*')
       .eq('id', itemId)
       .eq('user_id', user.id)  // 确保只能操作自己的数据
-      .single();
+      .single(); // 指定只返回一条记录
 
     // 检查数据项是否存在
     if (itemError || !item) {

@@ -265,12 +265,12 @@ export default function VectorItemsPage() {
             <Text type="secondary">管理用于向量搜索的数据项</Text>
           </div>
           <Space>
-            <Button 
+            {/* <Button 
               onClick={handleCreateTestData}
               loading={creatingTestData}
             >
               创建测试数据
-            </Button>
+            </Button> */}
             <Button 
               type="primary" 
               icon={<PlusOutlined />}
