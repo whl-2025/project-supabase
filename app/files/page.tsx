@@ -222,7 +222,8 @@ export default function FilesPage() {
           type: originalFile.type
         });
         
-        // 上传到 Supabase Storage
+        // 上传到 Supabase Storage 
+        // Supabase 客户端会自动：构建 Storage API URL、添加认证 Token、发送 HTTP POST 请求、上传文件内容
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('documents')
           .upload(storagePath, originalFile, {

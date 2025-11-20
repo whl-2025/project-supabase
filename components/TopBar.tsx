@@ -7,6 +7,7 @@ import {
   LogoutOutlined, 
   BellOutlined,
   SettingOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { createClient } from "@/utils/supabase/client";
@@ -27,6 +28,7 @@ const routeLabels: Record<string, string> = {
   "/ai/search": "智能问答",
   "/ai/settings": "模型配置",
   "/files": "文件管理",
+  "/chat": "聊天室",
   "/teams": "团队管理",
   "/activity": "活动日志",
   "/settings": "系统设置",
@@ -47,8 +49,8 @@ export default function TopBar() {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       
-      // 获取未读通知数量
       if (user) {
+        // 获取未读通知数量
         const { count } = await supabase
           .from('notifications')
           .select('*', { count: 'exact', head: true })
@@ -188,6 +190,13 @@ export default function TopBar() {
         />
       </div>
       <Space size="large">
+        <Button 
+          type="text" 
+          icon={<MessageOutlined style={{ fontSize: 18 }} />}
+          onClick={() => router.push('/chat')}
+        >
+          聊天室
+        </Button>
         <Badge count={unreadCount} offset={[-5, 5]}>
           <Button 
             type="text" 

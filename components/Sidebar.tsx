@@ -14,6 +14,7 @@ import {
   TeamOutlined,
   HistoryOutlined,
   ExperimentOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 
@@ -69,6 +70,11 @@ export default function Sidebar() {
       icon: <FileOutlined />,
       label: '文件管理',
     },
+    {
+      key: '/chat',
+      icon: <MessageOutlined />,
+      label: '聊天室',
+    },
     // {
     //   key: '/teams',
     //   icon: <TeamOutlined />,
@@ -96,7 +102,7 @@ export default function Sidebar() {
     
     // 精确匹配
     if (pathname === '/home' || pathname === '/projects' || pathname === '/files' || 
-        pathname === '/teams' || pathname === '/activity') {
+        pathname === '/chat' || pathname === '/teams' || pathname === '/activity') {
       return [pathname];
     }
     
