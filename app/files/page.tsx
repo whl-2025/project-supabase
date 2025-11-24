@@ -223,12 +223,12 @@ export default function FilesPage() {
         });
         
         // 上传到 Supabase Storage 
-        // Supabase 客户端会自动：构建 Storage API URL、添加认证 Token、发送 HTTP POST 请求、上传文件内容
+        // Supabase 客户端会自动：构建 Storage API URL、发送 HTTP POST 请求、上传文件内容
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('documents')
+          .from('documents')    // 步骤 1: 选择存储桶
           .upload(storagePath, originalFile, {
             cacheControl: '3600',
-            upsert: false,
+            upsert: false,  //当 storagePath 路径下已存在同名文件时，上传会失败。如果为 true，则会覆盖已存在的文件。
           });
 
         if (uploadError) {
